@@ -22,7 +22,7 @@ Set a local-only `SECRET_KEY` in `.env`, then open `http://localhost:5000`. The 
 - `.github/workflows/ci.yml` runs Python checks and deploys `main` from a self-hosted runner.
 - `docs/platform-engineering-assignment.md` is the separate assignment write-up; it is reference material, not the active app deployment workflow.
 
-The deploy job calls `.github/workflows/deploy.sh` from a self-hosted Linux x64 GitHub Actions runner. Configure the repository Actions secrets `EC2_HOST`, `EC2_SSH_KEY` (private key contents), `EC2_KNOWN_HOSTS` (verified EC2 SSH host-key line), and `DATABASE_URL` before pushing to `main`. The runner must be on a network whose public IP is allowed by the EC2 SSH security-group rule, and must have `ssh`, `tar`, and Python installed.
+The deploy job calls `.github/workflows/deploy.sh` locally on the EC2-hosted self-hosted Linux x64 GitHub Actions runner. Configure the repository Actions secret `DATABASE_URL` before pushing to a `release-*` branch. The runner must be installed on the app EC2 instance, online, and able to run the deployment's `sudo` commands.
 
 Do not commit real credentials or secret values. Set production environment variables outside the repository.
 
@@ -44,4 +44,4 @@ Keep `~/.ssh/pilgrim-key` private and never commit it. If `pilgrim-key` already 
 
 ## GitHub Actions deployment
 
-After CI passes on a push to `main`, the self-hosted runner transfers the Flask files to EC2, writes the database URL to a root-owned environment file, installs Python requirements, installs/enables the Gunicorn systemd service, reloads Nginx, and checks `/health`. URL-encode special characters in the database password when constructing `DATABASE_URL`. The database URL is passed as a GitHub Actions secret and is not written to the repository.
+After CI passes on a push to a `release-*` branch, the self-hosted runner copies the checked-out Flask files into `/opt/pilgrim/app`, writes the database URL to a root-owned environment file, installs Python requirements, enables/restarts the Gunicorn systemd service, reloads Nginx, and checks `/health`. URL-encode special characters in the database password when constructing `DATABASE_URL`. The database URL is passed as a GitHub Actions secret and is not written to the repository. Because the runner is on the target EC2 instance, no EC2 SSH secrets are needed for deployment.
