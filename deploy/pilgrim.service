@@ -1,0 +1,17 @@
+[Unit]
+Description=Pilgrim Pantry Flask application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pilgrim
+Group=pilgrim
+WorkingDirectory=/opt/pilgrim/app
+EnvironmentFile=/etc/pilgrim/app.env
+ExecStart=/opt/pilgrim/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:5000 app:app
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
