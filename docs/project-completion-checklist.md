@@ -16,8 +16,8 @@ Status key:
 - [x] Gunicorn is managed by systemd; Nginx proxies HTTP traffic to the local Gunicorn listener.
 - [x] GitHub Actions runs basic Flask smoke checks and has a release-branch deployment job.
 - [x] The deployment script installs requirements, initializes a limited application database user, restarts the service, and checks local health.
-- [~] The deployment job uses a self-hosted runner on the app EC2 instance. This has operated before, but the runner's current online status and a current end-to-end deployment need verification.
-- [x] AWS infrastructure has been recreated. EC2 and RDS were verified running/available after apply; app deployment and public health verification remain pending.
+- [x] The deployment job uses a self-hosted runner on the app EC2 instance. Runner is now installed as a systemd service (`svc.sh install` + `start`) so it survives instance stop/start and reboot; confirmed `online` via the GitHub API.
+- [x] AWS infrastructure has been recreated. EC2 and RDS were verified running/available after apply. A release-branch deployment (`5ea2fa9`) completed successfully end-to-end: CI test job passed, deploy job passed, `/health` returns `{"database":"connected","status":"ok"}`, and the homepage serves the real Flask storefront (not the Nginx default page) at the current public IP.
 
 ## Part 1: Deployment approach
 
@@ -37,7 +37,7 @@ Status key:
 - [x] Deployment is gated to pushes on `release-*` and waits for the test job.
 - [x] CI installs Python requirements, compiles the app, and smoke-tests the home and health endpoints.
 - [x] Deployment runs on a self-hosted EC2 runner, so it does not need SSH credentials to connect back to that same instance.
-- [~] Deployment retrieves DB credentials through the EC2 role and Secrets Manager. Verify the EC2 runner service remains online after the stack is recreated.
+- [x] Deployment retrieves DB credentials through the EC2 role and Secrets Manager (`DB_HOST`/`DB_PORT` come from Terraform-provided values in `/etc/pilgrim/app.env`, not the RDS-managed secret, since that secret only contains `username`/`password`). The EC2 runner service remains online after the stack is recreated (verified as a systemd service).
 - [ ] Add an automated order-placement test and PostgreSQL-backed integration test; current CI smoke tests use local SQLite.
 - [ ] Add database migration handling before schema changes are released.
 - [ ] Add deployment rollback or previous-release restoration when the post-deploy health check fails.
@@ -71,12 +71,12 @@ Status key:
 - [x] Flask `/health` returns JSON and HTTP 200 when the configured database can run `SELECT 1`.
 - [x] Flask `/health` returns JSON and HTTP 503 if the database check fails.
 - [x] The deployment script checks the local health endpoint after restarting Gunicorn.
-- [ ] Verify the same endpoint through the public Nginx URL after infrastructure is recreated.
+- [x] Verified the same endpoint through the public Nginx URL after infrastructure was recreated (`curl http://<EC2_PUBLIC_IP>/health` → HTTP 200, database connected).
 
 ## Part 6: AWS architecture
 
 - [x] Terraform modules define a VPC, public subnets, security groups, one EC2 app host, and PostgreSQL RDS.
-- [x] Recreate the AWS stack. Verify app deployment and public endpoint separately.
+- [x] Recreate the AWS stack. App deployment and public endpoint verified (see Part 5).
 - [ ] Add an Application Load Balancer if matching the assignment's full production architecture is required. It is not present and adds ongoing cost.
 - [ ] Add private application subnets or otherwise document the single public EC2 as a deliberate short-lived demo compromise.
 - [x] Add private database subnets.
@@ -90,7 +90,7 @@ Status key:
 
 1. Correct the assignment write-up and 502 runbook to reflect the actual Flask implementation.
 2. Recreate infrastructure and verify current AWS cost, EC2 health, RDS availability, and runner status.
-3. Run a release-branch deployment and test order placement plus `/health` through the public URL.
+3. ~~Run a release-branch deployment and test order placement plus `/health` through the public URL.~~ Done — `/health` verified live; order placement smoke test still pending as an automated CI check (see Part 2).
 4. Improve data safety first: private DB subnets, database backup/final snapshot policy, and recovery notes.
 5. Configure a domain for HTTPS, provide the CloudWatch notification email, and verify IAM/secrets access after deployment.
 6. Add migrations, PostgreSQL integration tests, and rollback.
