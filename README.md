@@ -2,6 +2,16 @@
 
 A Flask storefront with local SQLite development and Terraform-managed AWS infrastructure for a short review deployment.
 
+## High-level architecture
+
+Pilgrim Pantry is a Flask storefront deployed on one EC2 instance. Nginx proxies requests to Gunicorn/Flask; the app connects over TLS to a private PostgreSQL RDS instance. Terraform provisions the VPC, public and private subnets, Internet Gateway, route tables, security groups, EC2 IAM role, CloudWatch logs, and CPU alarms.
+
+GitHub Actions runs tests and deploys successful `release-*` builds using a self-hosted runner on EC2. The `/health` endpoint checks database connectivity.
+
+[View the high-level architecture diagram in Eraser](https://app.eraser.io/workspace/yWvo3DC7ZZ7t3eQi7uo8)
+
+**Current-state note:** The saved Terraform state does not include an ALB, EKS, NAT Gateway, S3 bucket, or Route 53 resources. HTTPS is optional and is not enabled without a configured domain.
+
 ## Run locally
 
 ```bash
