@@ -20,6 +20,22 @@ variable "public_subnets" {
   description = "Public subnet CIDR blocks"
   type        = list(string)
   default     = ["10.0.1.0/24", "10.0.2.0/24"]
+
+  validation {
+    condition     = length(var.public_subnets) >= 2
+    error_message = "Provide at least two public subnets in distinct availability zones."
+  }
+}
+
+variable "private_subnets" {
+  description = "CIDR blocks for isolated private database subnets"
+  type        = list(string)
+  default     = ["10.0.11.0/24", "10.0.12.0/24"]
+
+  validation {
+    condition     = length(var.private_subnets) >= 2
+    error_message = "Provide at least two private subnets in distinct availability zones."
+  }
 }
 
 variable "instance_type" {
@@ -69,12 +85,6 @@ variable "db_username" {
   default     = "postgresadmin"
 }
 
-variable "db_password" {
-  description = "PostgreSQL master password"
-  type        = string
-  sensitive   = true
-}
-
 variable "db_instance_class" {
   description = "RDS instance class for the short review period"
   type        = string
@@ -85,4 +95,37 @@ variable "db_allocated_storage" {
   description = "RDS storage size in GB"
   type        = number
   default     = 20
+}
+
+variable "domain_name" {
+  description = "Optional DNS name for enabling Let's Encrypt HTTPS on EC2"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.domain_name == "" || can(regex("^[A-Za-z0-9.-]+$", var.domain_name))
+    error_message = "domain_name must be empty or a valid hostname without a scheme or path."
+  }
+}
+
+variable "certbot_email" {
+  description = "Email for Let's Encrypt certificate notices; required when domain_name is set"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.domain_name == "" || can(regex("^[^ @]+@[^ @]+\\.[^ @]+$", var.certbot_email))
+    error_message = "Provide a valid certbot_email when domain_name is set."
+  }
+}
+
+variable "alarm_notification_email" {
+  description = "Optional email recipient for CloudWatch CPU alarm notifications"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.alarm_notification_email == "" || can(regex("^[^ @]+@[^ @]+\\.[^ @]+$", var.alarm_notification_email))
+    error_message = "alarm_notification_email must be empty or a valid email address."
+  }
 }

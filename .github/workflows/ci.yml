@@ -1,5 +1,12 @@
 name: Flask CI
 
+permissions:
+  contents: read
+
+concurrency:
+  group: pilgrim-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   push:
     branches: [main, release-*]
@@ -42,8 +49,6 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release-')
     needs: test
     runs-on: [self-hosted, linux, x64]
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4

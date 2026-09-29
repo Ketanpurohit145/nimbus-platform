@@ -10,6 +10,8 @@ Group=pilgrim
 WorkingDirectory=/opt/pilgrim/app
 EnvironmentFile=/etc/pilgrim/app.env
 ExecStart=/opt/pilgrim/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:5000 app:app
+StandardOutput=append:/var/log/pilgrim/app.log
+StandardError=append:/var/log/pilgrim/app-error.log
 Restart=on-failure
 RestartSec=5
 

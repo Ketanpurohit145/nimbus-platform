@@ -1,23 +1,62 @@
+import json
+import logging
 import os
 from datetime import datetime
+
+import boto3
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
+from sqlalchemy import URL
+from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
+from botocore.exceptions import BotoCoreError, ClientError
 
 load_dotenv()
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
 app = Flask(__name__)
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{os.path.join(BASE_DIR, 'shop.db')}"
+
+
+def get_database_url():
+    secret_arn = os.getenv("DB_APP_SECRET_ARN")
+    if secret_arn:
+        try:
+            response = boto3.client(
+                "secretsmanager", region_name=os.getenv("AWS_REGION")
+            ).get_secret_value(SecretId=secret_arn)
+            credentials = json.loads(response["SecretString"])
+            return URL.create(
+                "postgresql+psycopg2",
+                username=credentials["username"],
+                password=credentials["password"],
+                host=credentials["host"],
+                port=int(credentials["port"]),
+                database=credentials["dbname"],
+                query={
+                    "sslmode": "verify-full",
+                    "sslrootcert": "/etc/ssl/certs/rds-global-bundle.pem",
+                },
+            )
+        except (BotoCoreError, ClientError, KeyError, ValueError) as error:
+            raise RuntimeError("Unable to load application database credentials") from error
+
+    return os.getenv("DATABASE_URL") or f"sqlite:///{os.path.join(BASE_DIR, 'shop.db')}"
+
+
+DATABASE_URL = get_database_url()
 
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
 # Simple fallback for local dev when container uses SQLite DB
-if DATABASE_URL.startswith("postgres") and os.getenv("USE_SQLITE_FOR_LOCAL") == "1":
+if (
+    isinstance(DATABASE_URL, str)
+    and DATABASE_URL.startswith("postgres")
+    and os.getenv("USE_SQLITE_FOR_LOCAL") == "1"
+):
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'shop.db')}"
 
 db = SQLAlchemy(app)
@@ -139,9 +178,10 @@ def health():
     try:
         db.session.execute(db.text("SELECT 1"))
         return {"status": "ok", "database": "connected"}, 200
-    except Exception:
+    except SQLAlchemyError:
+        app.logger.exception("Database health check failed")
         return {"status": "error", "database": "unavailable"}, 503
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=True)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=False)

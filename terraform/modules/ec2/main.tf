@@ -23,6 +23,57 @@ resource "aws_key_pair" "app" {
   }
 }
 
+resource "aws_iam_role" "app" {
+  name = "${var.project_name}-ec2-runtime"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Name = "${var.project_name}-ec2-runtime"
+  }
+}
+
+resource "aws_iam_instance_profile" "app" {
+  name = "${var.project_name}-ec2-profile"
+  role = aws_iam_role.app.name
+}
+
+resource "aws_iam_role_policy" "cloudwatch_logs" {
+  name = "${var.project_name}-cloudwatch-logs"
+  role = aws_iam_role.app.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogStream",
+        "logs:DescribeLogStreams",
+        "logs:PutLogEvents"
+      ]
+      Resource = [for arn in var.log_group_arns : "${arn}:*"]
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "secrets_manager" {
+  name = "${var.project_name}-database-secrets"
+  role = aws_iam_role.app.id
+  policy = templatefile("${path.module}/secrets-policy.json", {
+    region            = var.aws_region
+    master_secret_arn = var.db_admin_secret_arn
+    app_secret_arn    = var.db_app_secret_arn
+  })
+}
+
 resource "aws_instance" "app" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
@@ -30,12 +81,37 @@ resource "aws_instance" "app" {
   vpc_security_group_ids      = [var.app_security_group_id]
   associate_public_ip_address = true
   key_name                    = aws_key_pair.app.key_name
+  iam_instance_profile        = aws_iam_instance_profile.app.name
+  monitoring                  = true
+
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+    encrypted   = true
+  }
+
+  metadata_options {
+    http_tokens = "required"
+  }
 
   user_data = templatefile("${path.module}/bootstrap.sh", {
-    app_port = var.app_port
+    app_port            = var.app_port
+    aws_region          = var.aws_region
+    db_name             = var.db_name
+    db_admin_secret_arn = var.db_admin_secret_arn
+    db_app_secret_arn   = var.db_app_secret_arn
+    domain_name_json    = jsonencode(var.domain_name)
+    certbot_email_json  = jsonencode(var.certbot_email)
+    nginx_server_name   = var.domain_name == "" ? "_" : var.domain_name
+    log_group_names     = var.log_group_names
   })
 
   tags = {
     Name = "${var.project_name}-app"
   }
+
+  depends_on = [
+    aws_iam_role_policy.cloudwatch_logs,
+    aws_iam_role_policy.secrets_manager
+  ]
 }

@@ -20,5 +20,5 @@ output "rds_endpoint" {
 
 output "app_url" {
   description = "Application URL for the deployed service"
-  value       = "http://${module.ec2.public_ip}"
+  value       = var.domain_name == "" ? "http://${module.ec2.public_ip}" : "https://${var.domain_name}"
 }

@@ -377,96 +377,41 @@ psql "host=... port=5432 dbname=... user=..." -c "SELECT 1;"
 
 ## Part 4: Security Review
 
-Below are common risks and the mitigation steps.
+The implementation uses a short-lived review environment, so the following controls are included in Terraform and the deployment design. Items that require a domain or a notification recipient are explicitly conditional.
 
-### 1. Secrets stored in source code
+### 1. Secrets and database credentials
 
-Risk: credentials accidentally committed to Git.
+The RDS master password is generated and rotated by RDS through Secrets Manager rather than supplied as a Terraform variable. The deployment initializer creates a separate `pilgrim_app` database user and places that credential in a second Secrets Manager secret. The Flask process retrieves the app credential through the EC2 instance profile. PostgreSQL connections use TLS certificate verification against the RDS CA bundle. Neither the master password nor the database URL is committed or passed as a GitHub Actions secret.
 
-Fix:
-- Use `.env` files outside source control.
-- Store secrets in AWS Secrets Manager or GitHub Actions secrets.
-- Add `.env` to `.gitignore`.
+Terraform state and any saved plan files must still be treated as sensitive. The EC2 role's Secrets Manager access is scoped to the RDS master secret and the named application secret. The deployment initializer needs master-secret access to provision the limited application user; for a larger production system, move this one-time database provisioning into an isolated administrative workflow so the long-running app host never has master-secret access.
 
-### 2. Overly permissive IAM access
+### 2. IAM access
 
-Risk: broad permissions allow lateral movement.
+The EC2 instance has an instance profile rather than static AWS access keys. Its role permits CloudWatch log publishing and the Secrets Manager operations required by the database initializer and application. Do not grant administrator access or reuse a human IAM user's access keys on EC2.
 
-Fix:
-- Follow least privilege.
-- Use IAM roles for EC2 and other AWS services.
-- Restrict Access Keys and rotate them regularly.
+### 3. Database and network isolation
 
-### 3. Publicly exposed database
+RDS is configured with public access disabled and is placed in private subnets that have no internet route. Its security group accepts PostgreSQL traffic only from the application security group. The public EC2 host accepts HTTP and HTTPS traffic; SSH is restricted to the operator's configured CIDR.
 
-Risk: RDS instance accessible from the internet.
+### 4. Transport security
 
-Fix:
-- Place RDS in a private subnet.
-- Only allow access from the application security group.
-- Disable public access.
+Nginx is the public reverse proxy and Gunicorn listens only on loopback. Certbot support is included, but trusted HTTPS is not active until an owned DNS name points to EC2 and a contact email is provided. Until then, the demo is HTTP-only and must not collect real personal or payment information.
 
-### 4. Open security group ports
+### 5. Production debug and Linux permissions
 
-Risk: unnecessary ports exposed to the internet.
+The production service runs Gunicorn with Flask debug mode disabled and runs as the dedicated `pilgrim` user. Runtime configuration is kept in `/etc/pilgrim/app.env`, owned by root and readable only by the application group. The application does not run as root.
 
-Fix:
-- Open only 22, 80, and 443 as required.
-- Restrict SSH access to approved IPs.
-- Use ALB for public access and keep EC2 private when possible.
+### 6. Dependency and deployment risks
 
-### 5. Missing SSL
+Python dependencies are pinned in `requirements.txt`. A vulnerability scan and routine patch process should be added before production use. The self-hosted GitHub Actions runner is on the app EC2 host and deployment uses `sudo`; this increases the impact of a compromised workflow. Restrict who can modify release workflows and keep the runner dedicated to this trusted repository.
 
-Risk: data theft or insecure connections.
+### 7. Backups and deletion
 
-Fix:
-- Use Nginx with Let’s Encrypt.
-- Redirect HTTP to HTTPS.
-- Enable HSTS if supported.
+RDS storage is encrypted, automated backups are retained for one day to satisfy the current Free Plan restriction, and Terraform requests a final snapshot during destroy. A final snapshot and scheduled deletion of the application secret can continue to incur charges after the EC2 and RDS instance are removed. Deletion protection remains disabled for this short-lived demo, so operators must review the destroy plan and retain snapshots intentionally.
 
-### 6. Debug mode enabled
+### 8. Monitoring and log retention
 
-Risk: application reveals stack traces or sensitive info.
-
-Fix:
-- Set `NODE_ENV=production` or `DEBUG=False`.
-- Disable detailed error pages in production.
-
-### 7. Outdated dependencies
-
-Risk: known vulnerabilities.
-
-Fix:
-- Run dependency update checks regularly.
-- Use `npm audit`, `pip-audit`, or Snyk.
-- Patch vulnerable libraries promptly.
-
-### 8. Weak Linux permissions
-
-Risk: code and config readable by unauthorized users.
-
-Fix:
-- Use dedicated application user.
-- Restrict `.env` and config file permissions.
-- Avoid running as root.
-
-### 9. Missing backups
-
-Risk: losing the database or app state after a failure.
-
-Fix:
-- Enable automated RDS snapshots.
-- Backup code repositories and artifact versions.
-- Test restoration procedures regularly.
-
-### 10. Missing monitoring and alerts
-
-Risk: incidents go unnoticed.
-
-Fix:
-- Use CloudWatch alarms.
-- Monitor CPU, memory, disk, 5xx errors, and HTTP latency.
-- Configure alerts via email or SMS.
+The CloudWatch Agent ships app, Nginx, and bootstrap logs to CloudWatch Logs with seven-day retention. EC2 and RDS CPU alarms trigger above 80% for one one-minute datapoint. EC2 detailed monitoring is enabled for one-minute metrics and may incur additional charges. Email delivery is optional and requires setting `alarm_notification_email` and confirming the SNS subscription.
 
 ---
 

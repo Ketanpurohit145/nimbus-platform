@@ -13,6 +13,11 @@ variable "public_subnets" {
   type        = list(string)
 }
 
+variable "private_subnets" {
+  description = "List of isolated private subnet CIDRs for database resources"
+  type        = list(string)
+}
+
 variable "aws_region" {
   description = "AWS region"
   type        = string

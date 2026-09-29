@@ -29,3 +29,35 @@ variable "ami_name_filter" {
 variable "app_port" {
   type = number
 }
+
+variable "aws_region" {
+  type = string
+}
+
+variable "db_name" {
+  type = string
+}
+
+variable "db_admin_secret_arn" {
+  type = string
+}
+
+variable "db_app_secret_arn" {
+  type = string
+}
+
+variable "domain_name" {
+  type = string
+}
+
+variable "certbot_email" {
+  type = string
+}
+
+variable "log_group_names" {
+  type = map(string)
+}
+
+variable "log_group_arns" {
+  type = list(string)
+}

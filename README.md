@@ -17,12 +17,16 @@ Set a local-only `SECRET_KEY` in `.env`, then open `http://localhost:5000`. The 
 ## Project files
 
 - `app.py`, `templates/`, and `static/` contain the Flask application.
-- `requirements.txt` lists the Flask, Gunicorn, and PostgreSQL dependencies.
+- `requirements.txt` lists Flask, Gunicorn, PostgreSQL, and AWS SDK dependencies.
 - `terraform/` contains the modular AWS infrastructure and EC2 bootstrap.
-- `.github/workflows/ci.yml` runs Python checks and deploys `main` from a self-hosted runner.
+- `.github/workflows/ci.yml` runs Python checks and deploys release branches from a self-hosted runner.
 - `docs/platform-engineering-assignment.md` is the separate assignment write-up; it is reference material, not the active app deployment workflow.
 
-The deploy job calls `.github/workflows/deploy.sh` locally on the EC2-hosted self-hosted Linux x64 GitHub Actions runner. Configure the repository Actions secret `DATABASE_URL` before pushing to a `release-*` branch. The runner must be installed on the app EC2 instance, online, and able to run the deployment's `sudo` commands.
+The deploy job calls `.github/workflows/deploy.sh` locally on the EC2-hosted self-hosted Linux x64 GitHub Actions runner. No database URL or SSH private key is stored in GitHub Actions: Terraform enables RDS-managed master credentials, and the EC2 instance role lets the initializer create a separate application DB user and store its credentials in Secrets Manager. The Flask process reads only the application secret. Keep the runner online and able to run the deployment's `sudo` commands. The instance role's Secrets Manager permissions are scoped to the RDS master secret and the named app secret; the host still needs master-secret access during app-user initialization, so move that setup to a separate administrative workflow before treating this as a production design.
+
+The VPC has public subnets for the app EC2 and isolated private subnets for RDS. The PostgreSQL connections verify TLS against the RDS CA bundle. CloudWatch Logs receives Nginx, app, and bootstrap logs for seven days. CPU alarms use an 80% threshold for one one-minute datapoint; EC2 detailed monitoring is enabled to provide one-minute metrics. If `alarm_notification_email` is empty, alarms are visible in CloudWatch but do not send email.
+
+HTTPS is prepared as an optional Certbot bootstrap path. It remains inactive until a domain name points to the EC2 public IP and `domain_name` plus `certbot_email` are set before instance creation. Without a domain, the demo uses HTTP only. RDS has one-day automated backup retention to satisfy the current Free Plan restriction, and Terraform requests a final snapshot on destroy; snapshots and Secrets Manager incur charges and survive longer than the running instance.
 
 Do not commit real credentials or secret values. Set production environment variables outside the repository.
 
@@ -44,4 +48,4 @@ Keep `~/.ssh/pilgrim-key` private and never commit it. If `pilgrim-key` already 
 
 ## GitHub Actions deployment
 
-After CI passes on a push to a `release-*` branch, the self-hosted runner copies the checked-out Flask files into `/opt/pilgrim/app`, writes the database URL to a root-owned environment file, installs Python requirements, enables/restarts the Gunicorn systemd service, reloads Nginx, and checks `/health`. URL-encode special characters in the database password when constructing `DATABASE_URL`. The database URL is passed as a GitHub Actions secret and is not written to the repository. Because the runner is on the target EC2 instance, no EC2 SSH secrets are needed for deployment.
+After CI passes on a push to a `release-*` branch, the self-hosted runner copies the checked-out Flask files into `/opt/pilgrim/app`, installs Python requirements, initializes the application DB user if needed, enables/restarts the Gunicorn systemd service, reloads Nginx, and checks `/health`. The runner uses the EC2 instance profile for AWS access. Because the runner is on the target EC2 instance, no EC2 SSH or database URL secrets are needed in GitHub Actions.
