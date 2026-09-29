@@ -8,7 +8,7 @@ Pilgrim Pantry is a Flask storefront deployed on one EC2 instance. Nginx proxies
 
 GitHub Actions runs tests and deploys successful `release-*` builds using a self-hosted runner on EC2. The `/health` endpoint checks database connectivity.
 
-[View the high-level architecture diagram in Eraser](https://app.eraser.io/workspace/yWvo3DC7ZZ7t3eQi7uo8)
+[View the document and high-level architecture diagram in Eraser](https://app.eraser.io/workspace/yWvo3DC7ZZ7t3eQi7uo8)
 
 **Current-state note:** The saved Terraform state does not include an ALB, EKS, NAT Gateway, S3 bucket, or Route 53 resources. HTTPS is optional and is not enabled without a configured domain.
 
