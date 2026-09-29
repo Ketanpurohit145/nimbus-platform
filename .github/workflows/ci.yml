@@ -1,5 +1,5 @@
 name: Flask CI
-# Runs tests on every push/PR, then deploys automatically when a release-* branch build passes.
+# Runs tests on every push/PR, then deploys successful pushes to main or release/* branches.
 
 permissions:
   contents: read
@@ -10,7 +10,7 @@ concurrency:
 
 on:
   push:
-    branches: [main, release-*]
+    branches: [main, 'release/*']
   pull_request:
     branches: [main]
 
@@ -47,8 +47,8 @@ jobs:
           PY
 
   deploy:
-    # Only release-* branch pushes deploy; PRs and main only run the test job above.
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release-')
+    # Deploy only push events from main or release/*; pull requests run tests without deploying.
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))
     needs: test
     runs-on: [self-hosted, linux, x64]  # runs on the app EC2 instance itself, avoiding SSH credentials in CI
     steps:
