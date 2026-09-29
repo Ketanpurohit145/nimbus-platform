@@ -25,6 +25,8 @@ def main():
     admin_secret_arn = required_environment("DB_ADMIN_SECRET_ARN")
     app_secret_arn = required_environment("DB_APP_SECRET_ARN")
     database_name = required_environment("DATABASE_NAME")
+    db_host = required_environment("DB_HOST")
+    db_port = int(required_environment("DB_PORT"))
     app_username = os.getenv("DB_APP_USERNAME", "pilgrim_app")
 
     secrets_manager = boto3.client("secretsmanager", region_name=region)
@@ -42,8 +44,8 @@ def main():
         app_password = secrets.token_urlsafe(40)
 
         with psycopg2.connect(
-            host=admin_credentials["host"],
-            port=int(admin_credentials["port"]),
+            host=db_host,
+            port=db_port,
             dbname=database_name,
             user=admin_credentials["username"],
             password=admin_credentials["password"],
@@ -87,8 +89,8 @@ def main():
         app_credentials = {
             "username": app_username,
             "password": app_password,
-            "host": admin_credentials["host"],
-            "port": int(admin_credentials["port"]),
+            "host": db_host,
+            "port": db_port,
             "dbname": database_name,
         }
         secrets_manager.put_secret_value(

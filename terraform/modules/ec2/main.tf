@@ -100,6 +100,8 @@ resource "aws_instance" "app" {
     db_name             = var.db_name
     db_admin_secret_arn = var.db_admin_secret_arn
     db_app_secret_arn   = var.db_app_secret_arn
+    db_host             = var.db_host
+    db_port             = var.db_port
     domain_name_json    = jsonencode(var.domain_name)
     certbot_email_json  = jsonencode(var.certbot_email)
     nginx_server_name   = var.domain_name == "" ? "_" : var.domain_name

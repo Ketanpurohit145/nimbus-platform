@@ -23,8 +23,8 @@ fi
 chown -R pilgrim:pilgrim /opt/pilgrim
 
 install -d -o root -g pilgrim -m 0750 /etc/pilgrim
-printf 'AWS_REGION=%s\nDATABASE_NAME=%s\nDB_ADMIN_SECRET_ARN=%s\nDB_APP_SECRET_ARN=%s\nSECRET_KEY=%s\n' \
-  '${aws_region}' '${db_name}' '${db_admin_secret_arn}' '${db_app_secret_arn}' "$(openssl rand -hex 32)" \
+printf 'AWS_REGION=%s\nDATABASE_NAME=%s\nDB_ADMIN_SECRET_ARN=%s\nDB_APP_SECRET_ARN=%s\nDB_HOST=%s\nDB_PORT=%s\nSECRET_KEY=%s\n' \
+  '${aws_region}' '${db_name}' '${db_admin_secret_arn}' '${db_app_secret_arn}' '${db_host}' '${db_port}' "$(openssl rand -hex 32)" \
   > /etc/pilgrim/app.env
 chown root:pilgrim /etc/pilgrim/app.env
 chmod 0640 /etc/pilgrim/app.env

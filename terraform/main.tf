@@ -35,6 +35,8 @@ module "ec2" {
   db_name               = var.db_name
   db_admin_secret_arn   = module.rds.master_secret_arn
   db_app_secret_arn     = module.rds.app_secret_arn
+  db_host               = module.rds.endpoint
+  db_port               = module.rds.port
   domain_name           = var.domain_name
   certbot_email         = var.certbot_email
   log_group_names       = module.logging.log_group_names

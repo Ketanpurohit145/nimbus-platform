@@ -42,6 +42,14 @@ variable "db_admin_secret_arn" {
   type = string
 }
 
+variable "db_host" {
+  type = string
+}
+
+variable "db_port" {
+  type = number
+}
+
 variable "db_app_secret_arn" {
   type = string
 }
