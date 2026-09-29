@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<!-- Storefront landing page: shows the menu (served by app.py's home() route). -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pilgrim Pantry</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container nav">
+        <div class="brand">Pilgrim Pantry</div>
+        <nav>
+          <a href="{{ url_for('home') }}">Home</a>
+          <a href="{{ url_for('order_products') }}">Order Now</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container hero">
+      <section class="hero-copy">
+        <p class="eyebrow">Freshly prepared everyday</p>
+        <h1>Good taste, quick delivery, and simple ordering.</h1>
+        <p>
+          Choose from our chef-curated menu and place your order in minutes.
+        </p>
+        <a class="primary-btn" href="{{ url_for('order_products') }}">Select items</a>
+      </section>
+
+      <section class="catalog">
+        <h2>Popular menu</h2>
+        <div class="product-grid">
+          {% for product in products %}
+          <article class="product-card">
+            <h3>{{ product.name }}</h3>
+            <p class="category">{{ product.category }}</p>
+            <p>{{ product.description }}</p>
+            <div class="product-footer">
+              <span>${{ '%.2f' % product.price }}</span>
+              <span>{{ product.stock }} left</span>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

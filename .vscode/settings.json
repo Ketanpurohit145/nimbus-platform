@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^\\.venv/bin/python -m compileall -q app\\.py scripts/initialize_database\\.py && \\.venv/bin/python - <<'PY'\nfrom app import app\nclient = app\\.test_client\\(\\)\nassert client\\.get\\('/'\\)\\.status_code == 200\nresponse = client\\.get\\('/health'\\)\nassert response\\.status_code == 200, response\\.get_json\\(\\)\nassert response\\.get_json\\(\\) == \\{'status': 'ok', 'database': 'connected'\\}\nprint\\('Flask compile and smoke tests passed'\\)\nPY$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
