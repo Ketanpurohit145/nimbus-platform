@@ -1,0 +1,172 @@
+/* Shared styling for all Pilgrim Pantry pages (index, order, confirmation). */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f7f3ee;
+  color: #1f1f1f;
+}
+
+.container {
+  width: min(1100px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.topbar {
+  background: #1d2d3a;
+  color: #fff;
+  padding: 18px 0;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  font-size: 1.6rem;
+  font-weight: bold;
+}
+
+nav {
+  display: flex;
+  gap: 18px;
+}
+
+nav a {
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.hero {
+  padding: 48px 0;
+}
+
+.hero-copy {
+  margin-bottom: 36px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #b36a33;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.hero-copy h1 {
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  margin: 10px 0;
+}
+
+.primary-btn {
+  display: inline-block;
+  background: #b36a33;
+  color: white;
+  text-decoration: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.catalog {
+  margin-top: 30px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.product-card,
+.summary-card,
+.message-box,
+.menu-item,
+.order-form {
+  background: white;
+  border: 1px solid #eadfce;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 5px 18px rgba(0,0,0,0.04);
+}
+
+.product-card h3,
+.menu-item h3 {
+  margin-top: 0;
+}
+
+.category {
+  color: #6b6b6b;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.product-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-weight: 700;
+}
+
+.form-wrap {
+  padding: 40px 0 60px;
+}
+
+.customer-details {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d8d0c7;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.menu-list {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.qty-box {
+  min-width: 130px;
+}
+
+.confirmation {
+  padding: 40px 0 60px;
+}
+
+.message-box {
+  margin-bottom: 24px;
+}
+
+.summary-card ul {
+  padding-left: 18px;
+}
