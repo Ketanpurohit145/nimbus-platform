@@ -3,6 +3,7 @@ resource "aws_security_group" "app" {
   description = "Allow app traffic"
   vpc_id      = var.vpc_id
 
+  # SSH restricted to the trusted CIDR(s) supplied via allowed_ssh_cidrs (no open SSH to the internet).
   ingress {
     from_port   = 22
     to_port     = 22
@@ -17,6 +18,7 @@ resource "aws_security_group" "app" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Reserved for future HTTPS/Certbot use; currently unused since the demo has no domain yet.
   ingress {
     from_port   = 443
     to_port     = 443
@@ -36,6 +38,7 @@ resource "aws_security_group" "app" {
   }
 }
 
+# DB security group only trusts traffic from the app security group, never from the open internet.
 resource "aws_security_group" "db" {
   name        = "${var.project_name}-db-sg"
   description = "Allow PostgreSQL access from app"

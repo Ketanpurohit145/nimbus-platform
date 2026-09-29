@@ -9,6 +9,7 @@ User=pilgrim
 Group=pilgrim
 WorkingDirectory=/opt/pilgrim/app
 EnvironmentFile=/etc/pilgrim/app.env
+# Gunicorn binds to localhost only; Nginx (installed by bootstrap.sh) proxies public traffic to it.
 ExecStart=/opt/pilgrim/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:5000 app:app
 StandardOutput=append:/var/log/pilgrim/app.log
 StandardError=append:/var/log/pilgrim/app-error.log

@@ -10,7 +10,7 @@ variable "rds_instance_identifier" {
   type = string
 }
 
-variable "notification_email" {
+variable "notification_email" { # if blank, alarms are created without SNS notifications
   type    = string
   default = ""
 }

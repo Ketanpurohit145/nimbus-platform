@@ -6,7 +6,7 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    random = {
+    random = { # used only to generate a unique RDS final-snapshot identifier
       source  = "hashicorp/random"
       version = "~> 3.6"
     }

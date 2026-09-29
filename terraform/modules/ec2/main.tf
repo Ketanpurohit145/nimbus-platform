@@ -11,9 +11,10 @@ data "aws_ami" "ubuntu" {
     values = ["hvm"]
   }
 
-  owners = ["099720109477"]
+  owners = ["099720109477"] # Canonical (official Ubuntu AMI publisher)
 }
 
+# Registers your local SSH public key with AWS so it can be injected into the instance for `ubuntu` login.
 resource "aws_key_pair" "app" {
   key_name   = var.key_name
   public_key = file(pathexpand(var.public_key_path))
@@ -23,6 +24,7 @@ resource "aws_key_pair" "app" {
   }
 }
 
+# IAM role the EC2 instance assumes at runtime; grants only CloudWatch logging and Secrets Manager access below.
 resource "aws_iam_role" "app" {
   name = "${var.project_name}-ec2-runtime"
   assume_role_policy = jsonencode({
@@ -46,6 +48,7 @@ resource "aws_iam_instance_profile" "app" {
   role = aws_iam_role.app.name
 }
 
+# Lets the CloudWatch Agent create log streams and publish log events, scoped to this project's log groups only.
 resource "aws_iam_role_policy" "cloudwatch_logs" {
   name = "${var.project_name}-cloudwatch-logs"
   role = aws_iam_role.app.id
@@ -64,6 +67,7 @@ resource "aws_iam_role_policy" "cloudwatch_logs" {
   })
 }
 
+# Lets the instance read the RDS master secret and read/write the app secret; scoped to just those two ARNs.
 resource "aws_iam_role_policy" "secrets_manager" {
   name = "${var.project_name}-database-secrets"
   role = aws_iam_role.app.id
@@ -74,6 +78,7 @@ resource "aws_iam_role_policy" "secrets_manager" {
   })
 }
 
+# The single app server: runs bootstrap.sh as user-data on first boot to install and configure everything.
 resource "aws_instance" "app" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
@@ -91,7 +96,7 @@ resource "aws_instance" "app" {
   }
 
   metadata_options {
-    http_tokens = "required"
+    http_tokens = "required" # enforces IMDSv2, blocking classic SSRF-based instance-metadata theft
   }
 
   user_data = templatefile("${path.module}/bootstrap.sh", {

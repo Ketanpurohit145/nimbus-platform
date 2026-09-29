@@ -2,6 +2,7 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Networking: VPC with public subnets (EC2) and private subnets (RDS).
 module "vpc" {
   source = "./modules/vpc"
 
@@ -12,6 +13,7 @@ module "vpc" {
   aws_region      = var.aws_region
 }
 
+# Firewall rules: app SG allows SSH/HTTP/HTTPS in; DB SG only allows Postgres from the app SG.
 module "security_groups" {
   source = "./modules/security_groups"
 
@@ -20,6 +22,7 @@ module "security_groups" {
   ssh_cidrs    = var.allowed_ssh_cidrs
 }
 
+# Single app server: EC2 instance running Flask/Gunicorn/Nginx, bootstrapped via user-data.
 module "ec2" {
   source = "./modules/ec2"
 
@@ -43,6 +46,7 @@ module "ec2" {
   log_group_arns        = module.logging.log_group_arns
 }
 
+# Database: private, encrypted PostgreSQL RDS instance with an RDS-managed master password.
 module "rds" {
   source = "./modules/rds"
 
@@ -55,6 +59,7 @@ module "rds" {
   db_allocated_storage = var.db_allocated_storage
 }
 
+# Alerting: CloudWatch CPU alarms for EC2/RDS, optionally emailed via SNS.
 module "observability" {
   source = "./modules/observability"
 
@@ -64,6 +69,7 @@ module "observability" {
   notification_email      = var.alarm_notification_email
 }
 
+# Log groups that the EC2 CloudWatch Agent ships app/Nginx/bootstrap logs into.
 module "logging" {
   source = "./modules/logging"
 

@@ -1,14 +1,18 @@
 #!/bin/bash
 set -euo pipefail
+# EC2 user-data: runs once on first boot to install/configure everything needed to run Pilgrim Pantry.
+# NOTE: does not re-run on stop/start of an existing instance (cloud-init runs user-data once per instance ID).
 
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
 apt-get install -y ca-certificates certbot curl git nginx openssl python3 python3-certbot-nginx python3-pip python3-venv
+# Download the AWS RDS CA bundle so psycopg2 can verify the database server's TLS certificate.
 curl -fsSLo /etc/ssl/certs/rds-global-bundle.pem \
   https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 chmod 0644 /etc/ssl/certs/rds-global-bundle.pem
 
+# Create a dedicated, non-root, non-login system user to run the Flask app.
 if ! id pilgrim >/dev/null 2>&1; then
   useradd --system --create-home --home-dir /opt/pilgrim --shell /usr/sbin/nologin pilgrim
 fi
@@ -22,6 +26,7 @@ if [[ ! -x /opt/pilgrim/venv/bin/python ]]; then
 fi
 chown -R pilgrim:pilgrim /opt/pilgrim
 
+# Write runtime config (DB connection info, secret ARNs) consumed by the app and deploy script; not world-readable.
 install -d -o root -g pilgrim -m 0750 /etc/pilgrim
 printf 'AWS_REGION=%s\nDATABASE_NAME=%s\nDB_ADMIN_SECRET_ARN=%s\nDB_APP_SECRET_ARN=%s\nDB_HOST=%s\nDB_PORT=%s\nSECRET_KEY=%s\n' \
   '${aws_region}' '${db_name}' '${db_admin_secret_arn}' '${db_app_secret_arn}' '${db_host}' '${db_port}' "$(openssl rand -hex 32)" \
@@ -29,6 +34,7 @@ printf 'AWS_REGION=%s\nDATABASE_NAME=%s\nDB_ADMIN_SECRET_ARN=%s\nDB_APP_SECRET_A
 chown root:pilgrim /etc/pilgrim/app.env
 chmod 0640 /etc/pilgrim/app.env
 
+# Reverse proxy: Nginx listens on port 80 and forwards to the local Gunicorn process.
 cat > /etc/nginx/sites-available/pilgrim <<'NGINX'
 server {
     listen 80 default_server;
@@ -51,6 +57,7 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl enable --now nginx
 
+# Only request a TLS certificate if a real domain and Certbot email were provided at apply time.
 DOMAIN_NAME=${domain_name_json}
 CERTBOT_EMAIL=${certbot_email_json}
 if [[ -n "$DOMAIN_NAME" && -n "$CERTBOT_EMAIL" ]]; then
@@ -59,6 +66,7 @@ if [[ -n "$DOMAIN_NAME" && -n "$CERTBOT_EMAIL" ]]; then
   systemctl enable --now certbot.timer
 fi
 
+# Install the CloudWatch Agent to ship app/Nginx/bootstrap logs to the log groups created by the logging module.
 curl -fsSLo /tmp/amazon-cloudwatch-agent.deb \
   https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
 dpkg -i -E /tmp/amazon-cloudwatch-agent.deb

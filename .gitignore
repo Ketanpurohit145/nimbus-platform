@@ -1,3 +1,4 @@
+# Secrets and local env files (never commit real credentials)
 .env
 .env.*
 !.env.example
@@ -6,6 +7,7 @@
 !**/.env.example
 terraform/terraform.env
 
+# Private keys
 *.pem
 *.key
 id_rsa
@@ -13,6 +15,7 @@ id_rsa.*
 id_ed25519
 id_ed25519.*
 
+# Terraform state/config (contains sensitive values, regenerated locally/in CI)
 .terraform/
 **/.terraform/
 *.tfstate
@@ -22,6 +25,7 @@ id_ed25519.*
 terraform/*.tfvars
 !terraform/*.tfvars.example
 
+# Python virtualenv/cache
 .venv/
 venv/
 __pycache__/
@@ -30,11 +34,13 @@ __pycache__/
 .coverage
 htmlcov/
 
+# Local SQLite dev database and logs
 shop.db
 *.sqlite
 *.sqlite3
 *.log
 
+# Misc
 node_modules/
 .DS_Store
 Thumbs.db

@@ -1,3 +1,4 @@
+# SNS topic + email subscription only get created if a notification email was actually provided.
 resource "aws_sns_topic" "alarms" {
   count = var.notification_email == "" ? 0 : 1
   name  = "${var.project_name}-alarms"
@@ -14,6 +15,7 @@ locals {
   alarm_actions = var.notification_email == "" ? [] : [aws_sns_topic.alarms[0].arn]
 }
 
+# Fires when the EC2 app instance's CPU stays above 80% for one minute (basic overload warning).
 resource "aws_cloudwatch_metric_alarm" "ec2_cpu" {
   alarm_name          = "${var.project_name}-ec2-cpu-high"
   alarm_description   = "EC2 CPU utilization above 80% for one one-minute datapoint."
@@ -34,6 +36,7 @@ resource "aws_cloudwatch_metric_alarm" "ec2_cpu" {
   }
 }
 
+# Fires when the RDS instance's CPU stays above 80% for one minute.
 resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
   alarm_name          = "${var.project_name}-rds-cpu-high"
   alarm_description   = "RDS CPU utilization above 80% for one one-minute datapoint."

@@ -1,3 +1,4 @@
+# Pilgrim Pantry: a small Flask storefront (menu browsing + order placement) used as the assignment demo app.
 import json
 import logging
 import os
@@ -11,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 from botocore.exceptions import BotoCoreError, ClientError
 
-load_dotenv()
+load_dotenv()  # loads a local .env file for development; ignored in production where real env vars are set
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
 app = Flask(__name__)
@@ -20,6 +21,7 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def get_database_url():
+    # In production DB_APP_SECRET_ARN is set, so credentials are fetched live from Secrets Manager instead of env vars.
     secret_arn = os.getenv("DB_APP_SECRET_ARN")
     if secret_arn:
         try:
@@ -35,6 +37,7 @@ def get_database_url():
                 port=int(credentials["port"]),
                 database=credentials["dbname"],
                 query={
+                    # Enforce TLS and verify the RDS server certificate against the downloaded AWS CA bundle.
                     "sslmode": "verify-full",
                     "sslrootcert": "/etc/ssl/certs/rds-global-bundle.pem",
                 },
@@ -42,6 +45,7 @@ def get_database_url():
         except (BotoCoreError, ClientError, KeyError, ValueError) as error:
             raise RuntimeError("Unable to load application database credentials") from error
 
+    # Local/dev fallback: use DATABASE_URL if provided, otherwise a local SQLite file.
     return os.getenv("DATABASE_URL") or f"sqlite:///{os.path.join(BASE_DIR, 'shop.db')}"
 
 
@@ -63,6 +67,7 @@ db = SQLAlchemy(app)
 
 
 class Product(db.Model):
+    # A menu item shown on the storefront, with live stock decremented on each order.
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     category = db.Column(db.String(80), nullable=False)
@@ -75,6 +80,7 @@ class Product(db.Model):
 
 
 class Order(db.Model):
+    # A customer order; total_amount is computed server-side from the selected items at checkout time.
     id = db.Column(db.Integer, primary_key=True)
     customer_name = db.Column(db.String(120), nullable=False)
     customer_email = db.Column(db.String(120), nullable=False)
@@ -86,6 +92,7 @@ class Order(db.Model):
 
 
 class OrderItem(db.Model):
+    # A single product line within an order, capturing the price at time of purchase.
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
@@ -95,8 +102,9 @@ class OrderItem(db.Model):
 
 
 with app.app_context():
-    db.create_all()
+    db.create_all()  # creates tables on first run; no migrations yet, so schema changes require manual handling
     if Product.query.count() == 0:
+        # Seed a fixed demo menu the first time the app starts against an empty database.
         seed_products = [
             Product(name="Pilgrim Saffron Rice Bowl", category="Main Course", description="Fragrant saffron rice with seasoned vegetables and herbs.", price=12.5, stock=20),
             Product(name="Fresh Herb Wrap", category="Fast Bite", description="Crisp vegetables, mint yogurt, and grilled chicken in a wrap.", price=9.0, stock=25),
@@ -110,6 +118,7 @@ with app.app_context():
 
 @app.route("/")
 def home():
+    # Storefront landing page: lists all menu items grouped by category.
     products = Product.query.order_by(Product.category, Product.name).all()
     return render_template("index.html", products=products)
 
@@ -124,6 +133,7 @@ def order_products():
         if not customer_name or not email or not address:
             return "Please complete your customer details before placing the order.", 400
 
+        # Parse form fields named qty_<product_id> into a list of {product, quantity} selections.
         selected = []
         for key, value in request.form.items():
             if key.startswith("qty_"):
@@ -149,7 +159,7 @@ def order_products():
             status="Placed"
         )
         db.session.add(order)
-        db.session.flush()
+        db.session.flush()  # assigns order.id before creating dependent OrderItem rows
 
         for item in selected:
             db.session.add(OrderItem(
@@ -158,7 +168,7 @@ def order_products():
                 quantity=item["quantity"],
                 unit_price=item["product"].price
             ))
-            item["product"].stock -= item["quantity"]
+            item["product"].stock -= item["quantity"]  # decrement stock atomically within the same transaction
 
         db.session.commit()
         return redirect(url_for("confirmation", order_id=order.id))
@@ -169,12 +179,14 @@ def order_products():
 
 @app.route("/confirmation/<int:order_id>")
 def confirmation(order_id):
+    # Order receipt page shown right after checkout.
     order = Order.query.get_or_404(order_id)
     return render_template("confirmation.html", order=order, items=order.items)
 
 
 @app.route("/health")
 def health():
+    # Used by the deploy script and load balancers/monitors to confirm the app can reach the database.
     try:
         db.session.execute(db.text("SELECT 1"))
         return {"status": "ok", "database": "connected"}, 200
@@ -184,4 +196,5 @@ def health():
 
 
 if __name__ == "__main__":
+    # Only used for local development; production runs via Gunicorn (see deploy/pilgrim.service).
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=False)

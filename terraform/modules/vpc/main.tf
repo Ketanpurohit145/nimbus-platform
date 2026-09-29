@@ -8,6 +8,7 @@ resource "aws_vpc" "main" {
   }
 }
 
+# Internet Gateway gives the public subnets (and only the public subnets) a route out to the internet.
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -16,6 +17,7 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
+# Public subnets: host the EC2 app instance; each gets a public IP and a default route via the IGW.
 resource "aws_subnet" "public" {
   count = length(var.public_subnets)
 
@@ -53,6 +55,7 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+# Private subnets: host RDS only; no public IPs and no route to the internet (no NAT gateway, to save cost).
 resource "aws_subnet" "private" {
   count = length(var.private_subnets)
 
@@ -66,6 +69,7 @@ resource "aws_subnet" "private" {
   }
 }
 
+# Intentionally has no routes to the internet; RDS only needs to be reachable from the app subnet within the VPC.
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
